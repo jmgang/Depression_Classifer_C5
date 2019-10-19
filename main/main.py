@@ -4,10 +4,10 @@ import re
 
 def authenticate_twitter():
     # initialize api instance
-    twitter_api = twitter.Api(consumer_key = "OHa1YzGAA9bCYgGLqTj8Gx9lY",
-                                consumer_secret = "Aidms2U04HsS4qwE1gHiuO8PtzOHoeC27GQ1a97y60eL09zYNt",
-                                access_token_key = "1174489071864823813-OWzSpSAM6Or9i3OylovvdYTsH6s4OY",
-                                access_token_secret = "fxVI68nKxsjxbzEVjuEo3fapFrKCWzJcSkyKhGOFkf2kY")
+    twitter_api = twitter.Api(consumer_key = "",
+                                consumer_secret = "",
+                                access_token_key = "",
+                                access_token_secret = "")
     # test authentication
     print(twitter_api.VerifyCredentials())
 
