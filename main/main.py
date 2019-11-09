@@ -1,6 +1,8 @@
 import twitter
 import csv
 import re
+from pprint import pprint
+
 
 def authenticate_twitter():
     # initialize api instance
@@ -48,7 +50,7 @@ def clean_twitter_data(tweet_data):
     all_words = []
     tweet_data_dict = [{}]
     # tweet_data = set(tweet["tweet"] for tweet in tweet_data)
-    print_list(tweet_data, 'tweet_data')
+    # print_list(tweet_data, 'tweet_data')
 
     for tweet in tweet_data:
         #split tweet into words
@@ -80,7 +82,7 @@ def retrieve_tweets_from_file(data_file='tweets.csv'):
             if row is not None and row != []:
                 retrieved_tweets.append({"id": ctr, "tweet" : row[0], "label":row[1]})
                 ctr += 1
-    print_list(retrieved_tweets)
+    # print_list(retrieved_tweets)
     return retrieved_tweets
 
 def get_triggered_tweets(tweet_data, trigger_file='trigger_words.txt'):
@@ -124,6 +126,41 @@ def get_words_list_from_file(from_file):
     fp.close()
     return words_list
 
+def build_rule_based_system(tweet_data, from_file):
+    bag_of_words = list(set(get_words_list_from_file(from_file)))
+    bag_of_words_list = {}
+
+    for word in bag_of_words:
+        bag_of_words_list[word] = 0
+
+    for tweet in tweet_data:
+        for word in bag_of_words:
+            bag_of_words_list[word] = count_word(word, tweet["cleaned"])
+        tweet["bag_of_words"] = bag_of_words_list
+        bag_of_words_list = {}
+        for word in bag_of_words:
+            bag_of_words_list[word] = 0
+
+    return tweet_data
+
+
+def count_word(find, sentence):
+    ctr = 0
+    for word in sentence:
+        if find == word:
+            ctr += 1
+    return ctr
+
+
+
+def pretty(d, indent=0):
+   for key, value in d.items():
+      print('\t' * indent + str(key))
+      if isinstance(value, dict):
+         pretty(value, indent+1)
+      else:
+         print('\t' * (indent+1) + str(value))
+
 
 def print_list(lst, title=''):
     if title != '':
@@ -136,6 +173,52 @@ def print_list_with_index(lst):
     for idx, k in enumerate(lst):
         print((idx+1), k)
     print()
+
+def find_active(tweet_data):
+    tweets = []
+    is_active = False
+    for tweet in tweet_data:
+        for keyword in tweet["bag_of_words"]:
+            if tweet["bag_of_words"][keyword] > 0:
+                tweets.append(tweet)
+                break
+    return tweets
+
+
+
+def to_list(bag_of_words):
+    lst = []
+
+    for keyword in bag_of_words:
+        lst.append(bag_of_words[keyword])
+
+    return lst
+
+def write_bag_of_words_to_CSV(tweet_data, tweetDataFile='bag_of_words.csv'):
+     # Now we write them to the empty CSV file
+    with open(tweetDataFile, mode='w', encoding="utf8") as csvfile:
+        linewriter = csv.writer(csvfile,delimiter=',',quotechar="\"")
+        headers = []
+        headers.append("Tweet ID")
+        headers.append("Cleaned Tweet")
+
+        keywords = list(set(get_words_list_from_file(from_file='loss_of_energy.txt')))
+        # keywords.sort()
+        headers.extend(keywords)
+        headers.append("Symptom")
+        linewriter.writerow(headers)
+
+
+        for tweet in tweet_data:
+            try:
+                lst = []
+                lst.append(tweet["id"])
+                lst.append(tweet["cleaned"])
+                lst.extend(to_list(tweet["bag_of_words"]))
+                lst.append("Loss of Energy")
+                linewriter.writerow(lst)
+            except Exception as e:
+                print(e)
 
 
 if __name__ == '__main__':
@@ -154,11 +237,7 @@ if __name__ == '__main__':
     # print(tweets)
     # write_to_CSV(tweets, tweetDataFile='tweets2.csv')
 
-
-
     tweet_data = retrieve_tweets_from_file(data_file='tweets2.csv')
-
-    clean_twitter_data(tweet_data)
     cleaned_tweets, all_words, tweet_data = clean_twitter_data(tweet_data)
 
     print('Pulled data: ')
@@ -174,4 +253,14 @@ if __name__ == '__main__':
 
     triggered_tweet_data = get_triggered_tweets(tweet_data)
     print_list(triggered_tweet_data, 'triggered tweets')
+
+    tweet_data = build_rule_based_system(tweet_data, from_file='loss_of_energy.txt')
+    #pprint(tweet_data)
+
+    print("Tweets with Hits with symptom of Loss of Energy")
+    actives = find_active(tweet_data)
+    pprint(actives)
+
+    write_bag_of_words_to_CSV(tweet_data)
+
 
