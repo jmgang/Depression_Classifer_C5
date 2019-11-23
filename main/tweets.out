@@ -1,0 +1,58 @@
+
+See5 [Release 2.11a]  	Sat Nov 23 11:25:08 2019
+--------------------
+
+    Options:
+	Rule-based classifiers
+
+Read 60 cases (3 attributes) from tweets.data
+
+Rules:
+
+Rule 1: (31, lift 1.9)
+	SCORE <= 0.059
+	->  class 1  [0.970]
+
+Rule 2: (29, lift 2.0)
+	SCORE > 0.059
+	->  class 0  [0.968]
+
+Default class: 1
+
+
+Evaluation on training data (60 cases):
+
+	        Rules     
+	  ----------------
+	    No      Errors
+
+	     2    0( 0.0%)   <<
+
+
+	   (a)   (b)    <-classified as
+	  ----  ----
+	    31          (a): class 1
+	          29    (b): class 0
+
+
+	Attribute usage:
+
+	    100%  SCORE
+
+
+Evaluation on test data (32 cases):
+
+	        Rules     
+	  ----------------
+	    No      Errors
+
+	     2    2( 6.3%)   <<
+
+
+	   (a)   (b)    <-classified as
+	  ----  ----
+	    19          (a): class 1
+	     2    11    (b): class 0
+
+
+Time: 0.0 secs

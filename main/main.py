@@ -220,6 +220,66 @@ def write_bag_of_words_to_CSV(tweet_data, tweetDataFile='bag_of_words.csv'):
             except Exception as e:
                 print(e)
 
+def get_word_weights():
+    word_weights = {}
+    filename = 'word_weights.txt'
+    with open(filename, 'r') as file_read:
+        lines = file_read.readlines()
+        for line in lines:
+            str_lst = line.split()
+            weight = str_lst[1]
+            try:
+                weight = float(weight)
+            except ValueError:
+                weight = 0
+
+            word_weights[str_lst[0]] = weight
+    return word_weights
+
+
+def assign_scores_to_tweets(tweet_data):
+    word_weights = get_word_weights()
+    for tweet in tweet_data:
+        score = 0
+        norm = 0
+        total_words = len(tweet["cleaned"])
+        for token in tweet["cleaned"]:
+            if token in word_weights:
+                weight = word_weights[token]
+                if(weight < 0):
+                    norm += 1
+                score += weight
+        tweet["score"] = score
+        tweet["norm"] = norm
+        total_words = total_words - norm
+
+        if total_words > norm:
+            tweet["total_words"] = "more"
+        elif total_words < norm:
+            tweet["total_words"] = "less"
+        else:
+            tweet["total_words"] = "equal"
+
+    return tweet_data
+
+
+def assign_class(tweet_data, min_threshold, max_threshold):
+    for tweet in tweet_data:
+        tweet_score = tweet["score"]
+        if tweet_score > min_threshold and tweet_score < max_threshold:
+            tweet["symptom"] = 1
+        else:
+            tweet["symptom"] = 0
+    return tweet_data
+
+def prepare_for_C5(tweet_data):
+    with open("tweets.data","w") as output_file:
+        for tweet in tweet_data:
+            if len(tweet["cleaned"]) > 0:
+                output_file.write(str(tweet["norm"]) + "," + str(tweet["total_words"]) + "," + str(tweet["score"]) + "," + str(tweet["symptom"]) + "\n")
+
+    print("output file ready..")
+
 
 if __name__ == '__main__':
     print('classifying tweets with depression using C5')
@@ -254,13 +314,25 @@ if __name__ == '__main__':
     triggered_tweet_data = get_triggered_tweets(tweet_data)
     print_list(triggered_tweet_data, 'triggered tweets')
 
-    tweet_data = build_rule_based_system(tweet_data, from_file='loss_of_energy.txt')
-    #pprint(tweet_data)
+    # tweet_data = build_rule_based_system(tweet_data, from_file='loss_of_energy.txt')
+    # pprint(tweet_data)
 
-    print("Tweets with Hits with symptom of Loss of Energy")
-    actives = find_active(tweet_data)
-    pprint(actives)
+    # print("Tweets with Hits with symptom of Loss of Energy")
+    # actives = find_active(tweet_data)
+    # pprint(actives)
+    #
+    # write_bag_of_words_to_CSV(tweet_data)
 
-    write_bag_of_words_to_CSV(tweet_data)
+    #word_weights = get_word_weights()
+    #pretty(word_weights)
+
+    tweet_data = assign_class(assign_scores_to_tweets(tweet_data), -100, 0)
+
+    print("cleaned tweet, score, norm, total words, symptom/label")
+    for tweet in tweet_data:
+        print(str(tweet["cleaned"]) + "\t" + str(tweet["score"]) + "\t" + str(tweet["norm"]) + "\t" + str(tweet["total_words"]) + "\t" + str(tweet["symptom"]))
+
+    prepare_for_C5(tweet_data)
+
 
 

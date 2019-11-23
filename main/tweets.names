@@ -1,0 +1,4 @@
+1,0.			|class to be predicted
+NORM:		continuous.
+TOTALWORDS:	more,less,equal.
+SCORE:		continuous.

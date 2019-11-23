@@ -1,0 +1,7 @@
+id="See5/C5.0 2.11a 2019-11-23"
+entries="1"
+rules="2" default="1"
+conds="1" cover="31" ok="31" lift="1.87683" class="1"
+type="2" att="SCORE" cut="0.059" result="<"
+conds="1" cover="29" ok="29" lift="2.00222" class="0"
+type="2" att="SCORE" cut="0.059" result=">"
