@@ -4,10 +4,7 @@ import re
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.naive_bayes import  MultinomialNB
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.naive_bayes import BernoulliNB, MultinomialNB
 from pprint import pprint
 
 
@@ -67,6 +64,8 @@ def clean_twitter_data(tweet_data):
         cleaned_tweets.append(single_tweet)
         tweet["cleaned"] = single_tweet
     return cleaned_tweets, all_words, tweet_data
+
+
 
 def retrieve_tweets_from_file(data_file='tweets.csv'):
     retrieved_tweets = []
@@ -273,6 +272,16 @@ def assign_scores_to_tweets(tweet_data):
 
     return tweet_data
 
+
+def assign_class(tweet_data, min_threshold, max_threshold):
+    for tweet in tweet_data:
+        tweet_score = tweet["score"]
+        if tweet_score > min_threshold and tweet_score < max_threshold:
+            tweet["symptom"] = 1
+        else:
+            tweet["symptom"] = 0
+    return tweet_data
+
 def write_to_CSV(tweets, tweetDataFile='tweets.csv'):
      # Now we write them to the empty CSV file
     with open(tweetDataFile, mode='w', encoding="utf8") as csvfile:
@@ -305,7 +314,7 @@ def build_and_count_BOWs(X, tweet_data):
         tweet["bow_sum"] = sum
     return tweet_data
 
-def serialize_final_tweets(tweets, tweetDataFile='final_c5_data.csv'):
+def prepare_for_C5(tweets, tweetDataFile='final_c5_data.csv'):
     with open(tweetDataFile, mode='w', encoding="utf8", newline='') as csvfile:
         linewriter = csv.writer(csvfile,delimiter=',',quotechar="\"")
         linewriter.writerow(['A_Attr', 'S_Attr', 'BOW_Sum', 'Word_Score', 'Norm', 'Total_Words', 'Label'])
@@ -344,55 +353,69 @@ def get_tweet_dict( t_data, term ):
             break
     return t_dict
 
-def normalize_total_words(total_words_values):
-    total_words_map = {'more' : 1, 'equal' : 0.5, 'less': 0}
+def dfeatures(document, t_set):
+    # make a CountVectorizer-style tokenizer
+    tokenize = CountVectorizer().build_tokenizer()
+    terms = tokenize(document)
 
-    for word_list in total_words_values:
-        word_list[0] = total_words_map[word_list[0]]
+    tdd = get_tweet_dict(t_set, terms)
 
-    return total_words_values
-
+    # print(str(tweet_data_dict['id']) + '\t' + str(terms))
+    d = {'count': len(terms), 'score': tdd['score'], 'total_words' : tdd['total_words'], 'norm': tdd['norm'],
+            'a_attr': tdd['A_Attr'], 's_attr' : tdd['S_Attr']}
+    for t in terms:
+        d[t] = d.get(t, 0) + 1
+    return d
 
 # X = dataset.iloc[:, 1:2].values # 0 = created at. 1 = tweeets 2 = label
-def naive_bayes_classifier(dataset):
+def naive_bayes_classifier(tweet_data):
 
-    scaler = MinMaxScaler()
-    normalized_word_score = scaler.fit_transform(dataset.Word_Score.values.reshape(-1,1))
-    # print(normalized_word_score)
+    train_set, y_train, y_test = randomize_and_split(tweet_data)
+    cleaned_tweets = [ x['cleaned'] for x in train_set ]
+    tweets = []
+    for tweet_list in cleaned_tweets:
+        tweet_string = ''
+        for word in tweet_list:
+            tweet_string += word + ' '
+        if tweet_string:
+            tweets.append(tweet_string.rstrip())
+    norm = [c['norm'] for c in train_set]
 
-    dataset.Word_Score = normalized_word_score
-    dataset.Total_Words = normalize_total_words(dataset.Total_Words.values.reshape(-1,1))
+    from sklearn.feature_extraction import DictVectorizer
 
-    X_values = dataset.iloc[:, 0:5].values
-    y_values = dataset.iloc[:,6].values
+    print_list(train_set, 'train_set')
+    vect = DictVectorizer()
+    X_train = vect.fit_transform(dfeatures(t, train_set) for t in tweets)
 
-    print(X_values)
-    print(y_values)
+    print(X_train.toarray())
+    print(X_train.shape)
 
-    X_train, X_test, y_train, y_test = train_test_split(X_values, y_values, test_size=0.3, random_state=0)
+    print(len(y_train))
 
     nb_classifier = MultinomialNB()
-    nb_classifier.fit(X_train, y_train)
-    print("Multinomial Score: " + str(nb_classifier.score(X_test, y_test)))
 
-    y_pred = nb_classifier.predict(X_test)
+    nb_classifier.fit( X_train, y_train )
 
-    print(y_pred)
-
-    print("\nConfusion Matrix")
-    print(confusion_matrix(y_test,y_pred))
-    print("\nClassification Report")
-    print(classification_report(y_test,y_pred))
-    print("Accuracy: " + str(accuracy_score(y_test, y_pred)) + "\n")
 
 
 if __name__ == '__main__':
-    print('classifying tweets with depression using Naive Bayes')
+    print('classifying tweets with depression using C5')
+
+    # Retrieval of Tweets (Uncomment if first time), Comment for succeeeding times
+    # twitter_api = authenticate_twitter()
+    # tweets = pull_tweets_from_twitter(twitter_api, 120, 'depressed')
+    # print(tweets)
+    # write_to_CSV(tweets)
+
+
+    # NEW IMPLMENTATION - Retrieving tweets from actual user (instead of just searching for keywords)
+    # twitter_api = authenticate_twitter()
+    # tweets = pull_tweets_from_user_twitter(twitter_api, 100, "depressionarmy")
+    # print(tweets)
+    # write_to_CSV(tweets, tweetDataFile='tweets2.csv')
 
     tweet_data = retrieve_tweets_from_file(data_file='final_c5_tweets.csv')
     cleaned_tweets, all_words, tweet_data = clean_twitter_data(tweet_data)
-
-    # pprint(tweet_data)
 
     # print('Pulled data: ')
     # print_list_with_index(tweet_data)
@@ -408,19 +431,44 @@ if __name__ == '__main__':
     # triggered_tweet_data = get_triggered_tweets(tweet_data)
     # print_list(triggered_tweet_data, 'triggered tweets')
 
-    # feature extraction
-    # dataset = pd.read_csv('final_c5_tweets.csv')
-    # tweet_data_with_bow = build_and_count_BOWs(dataset.iloc[:, 1:2].values, tweet_data[1:])
-    # overall_tweet_data = assign_scores_to_tweets(tweet_data_with_bow)
+    # bow = build_BOW_C5( tweet_data)
     #
+    # pprint(bow)
+
+    dataset = pd.read_csv('final_c5_tweets.csv')
+    tweet_data_with_bow = build_and_count_BOWs(dataset.iloc[:, 1:2].values, tweet_data[1:])
+
+    overall_tweet_data = assign_scores_to_tweets(tweet_data_with_bow)
+
+    print_list(overall_tweet_data, 'overrall tweet data')
+
+    naive_bayes_classifier(overall_tweet_data)
+
+
+
     # pprint(overall_tweet_data)
     #
-    # pprint(overall_tweet_data)
+    # prepare_for_C5(overall_tweet_data)
+
+    # tweet_data = build_rule_based_system(tweet_data, from_file='loss_of_energy.txt')
+    # pprint(tweet_data)
+
+    # print("Tweets with Hits with symptom of Loss of Energy")
+    # actives = find_active(tweet_data)
+    # pprint(actives)
     #
+    # write_bag_of_words_to_CSV(tweet_data)
 
-    dataset = pd.read_csv('final_c5_data.csv')
+    #word_weights = get_word_weights()
+    #pretty(word_weights)
 
-    naive_bayes_classifier(dataset)
+    # tweet_data = assign_class(assign_scores_to_tweets(tweet_data), -100, 0)
+
+    # print("cleaned tweet, score, norm, total words, symptom/label")
+    # for tweet in tweet_data:
+    #     print(str(tweet["cleaned"]) + "\t" + str(tweet["score"]) + "\t" + str(tweet["norm"]) + "\t" + str(tweet["total_words"]) + "\t" + str(tweet["symptom"]))
+
+   #prepare_for_C5(tweet_data)
 
 
 
