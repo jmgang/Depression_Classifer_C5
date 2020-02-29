@@ -8,9 +8,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.naive_bayes import  MultinomialNB
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from translate import Translator
 from pprint import pprint
 
 
+translator = Translator(from_lang="tagalog", to_lang="english")
 
 def authenticate_twitter():
     # initialize api instance
@@ -62,8 +64,10 @@ def clean_twitter_data(tweet_data):
             if(w in stop_words or val is None):
                 continue
             else:
-                single_tweet.append(w.lower())
-                all_words.append(w.lower())
+                #translate
+                token = translator.translate(w.lower())
+                single_tweet.append(token)
+                all_words.append(token)
         cleaned_tweets.append(single_tweet)
         tweet["cleaned"] = single_tweet
     return cleaned_tweets, all_words, tweet_data
@@ -79,20 +83,6 @@ def retrieve_tweets_from_file(data_file='tweets.csv'):
                 ctr += 1
     # print_list(retrieved_tweets)
     return retrieved_tweets
-
-def get_triggered_tweets(tweet_data, trigger_file='trigger_words.txt'):
-    # tweet data - list of dicts
-
-    trigger_words_list = get_words_list_from_file(trigger_file)
-    triggered_tweet_data = []
-
-    for tweet in tweet_data:
-        cleaned_tweet_list = tweet["cleaned"]
-        for trigger_word in trigger_words_list:
-            if trigger_word in cleaned_tweet_list:
-                tweet["label"] = "depressed"
-                triggered_tweet_data.append(tweet)
-    return triggered_tweet_data
 
 
 def get_stop_words_list(stopWordListFileName):
@@ -392,7 +382,7 @@ if __name__ == '__main__':
     tweet_data = retrieve_tweets_from_file(data_file='final_c5_tweets.csv')
     cleaned_tweets, all_words, tweet_data = clean_twitter_data(tweet_data)
 
-    # pprint(tweet_data)
+    pprint(tweet_data)
 
     # print('Pulled data: ')
     # print_list_with_index(tweet_data)
@@ -404,9 +394,6 @@ if __name__ == '__main__':
     # print_list_with_index(all_words)
     #
     # print_list(tweet_data, 'tweet data cleaned')
-
-    # triggered_tweet_data = get_triggered_tweets(tweet_data)
-    # print_list(triggered_tweet_data, 'triggered tweets')
 
     # feature extraction
     # dataset = pd.read_csv('final_c5_tweets.csv')

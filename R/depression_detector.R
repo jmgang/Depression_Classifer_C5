@@ -1,6 +1,8 @@
 
 # install.packages("mvtnorm", repos=c("http://rstudio.org/_packages", "http://cran.rstudio.com",dependencies=TRUE))
 require(C50)
+require(e1071)
+library(caret)
 
 balanceCSV <- read.csv("C:\\Users\\user\\Documents\\R\\yt\\depression_detector_c5\\depression_detector\\final_c5_data.csv")
 str(balanceCSV)
@@ -31,14 +33,23 @@ model <- C50::C5.0( trainX, as.factor(trainy), trials=20)
 summary( model )
 
 # Predicting values
-C50_predict <- predict( model, testX, type="class" )
+C50_prediction <- predict( model, testX, type="class" );
+C50_prediction
 
-# Compare
+
+# Confusion Matrix
 table(testy,C50_predict)
 
 
 # Check accuracy
 accuracy <- sum( C50_predict == testy ) / length( C50_predict )
-paste0((accuracy * 100), "% accuracy")
+paste0((accuracy * 100), "% accuracy");
+
+# Other metrics
+cm <- confusionMatrix(factor(C50_prediction), reference = factor(testy));
+
+cm[["byClass"]][ , "F1"] 
+
+
 
 
